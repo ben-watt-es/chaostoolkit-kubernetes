@@ -5,12 +5,12 @@ import re
 
 from chaoslib.exceptions import ActivityFailed
 from chaoslib.types import Secrets
-from kubernetes import client
+from kubernetes import client, utils
 from logzero import logger
 
 from chaosk8s import create_k8s_api_client
 
-__all__ = ["terminate_pods"]
+__all__ = ["terminate_pods, apply_network_policy"]
 
 
 def terminate_pods(label_selector: str = None, name_pattern: str = None,
@@ -94,3 +94,18 @@ def terminate_pods(label_selector: str = None, name_pattern: str = None,
 
     for p in pods:
         res = v1.delete_namespaced_pod(p.metadata.name, ns, body)
+
+def apply_network_policy(secrets: Secrets = None,
+                         policy_yaml_path: str = None):
+    """
+    Apply a network policy to the cluster. 
+
+    If `grace_period` is greater than or equal to 0, it will
+    be used as the grace period (in seconds) to terminate the pods.
+    Otherwise, the default pod's grace period will be used.
+    """
+    api = create_k8s_api_client(secrets)
+    v1 = client.CoreV1Api(api)
+
+    logger.debug("Applying network policy to cluster.")
+    api = utils.create_from_yaml(v1, yaml_file=policy_yaml_path, verbose=True)
